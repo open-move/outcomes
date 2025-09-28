@@ -87,13 +87,9 @@ module my_market::prediction {
 ## DeFi Composability
 
 Standardized positions enable:
-- Lending collateral
-- AMM liquidity
-- Yield farming
-- Flash loans
-- Options/derivatives
-- Index funds
-- Insurance hedging
+- **Transfer and trading** - `key + store` abilities for wallets and explorers
+- **AMM liquidity** - Trade positions against tokens or other positions  
+- **Marketplace integration** - List on NFT marketplaces via kiosks
 
 One integration supports ALL markets.
 
