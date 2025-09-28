@@ -4,7 +4,7 @@ A standard for prediction markets outcomes on Sui. Inspired by Gnosis Conditiona
 
 ## Why
 
-- Sui's `Coin` standard requires deploying new packages per market (impractical)
+- Sui's `Coin` or balance `Supply` standard requires deploying new packages per market (impractical)
 - Need outcome differentiation (YES/NO positions)
 - Need market isolation (prevent cross-market contamination)
 - Enable DeFi composability (use positions as collateral, in Lending, in AMMs, etc)
@@ -74,7 +74,7 @@ module my_market::prediction {
 
 ## vs Alternatives
 
-**vs Sui Coin**
+**vs Sui Coin or balance Supply**
 - No deployment per market
 - Outcome differentiation  
 - Shared infrastructure
