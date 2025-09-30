@@ -11,7 +11,7 @@ A standard for prediction markets outcomes on Sui. Inspired by Gnosis Conditiona
 
 ## Features
 
-- **Witness-based treasury creation** - only market module can mint
+- **Witness-based supply manager creation** - only market module can mint
 - **Market isolation** - positions tied to specific markets via UID
 - **Position operations** - split, join, destroy_zero
 - **Supply tracking** - monitor minted/burned per outcome
@@ -26,37 +26,37 @@ module my_market::prediction {
     public fun create(ctx: &mut TxContext) {
         let market_uid = object::new(ctx);
 
-        let treasury = outcomes::create_treasury(
+        let (supply_manager, cap) = supply::create(
             PredictionPlatform(),
             &market_uid,
             2, // outcomes (YES/NO), (UP/DOWN), etc
             ctx
         );
 
-        // Store treasury in your market object
+        // Store supply manager and capability in your market object
     }
 }
 ```
 
 ## Core API
 
-### Treasury
-- `outcomes::create_treasury<T: drop>(witness: T, market: &UID, num_outcomes: u64, ctx: &mut TxContext): TreasuryCap<T>`
-- `outcomes::mint<T>(treasury: &mut TreasuryCap<T>, outcome_index: u64, value: u64, ctx: &mut TxContext): Position<T>`
-- `outcomes::burn<T>(treasury: &mut TreasuryCap<T>, position: Position<T>): u64`
+### Supply Manager
+- `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64, ctx: &mut TxContext): (SupplyManager<T>, SupplyManagerCap<T>)`
+- `supply::mint<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, outcome_index: u64, value: u64, ctx: &mut TxContext): Position<T>`
+- `supply::burn<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, position: Position<T>): u64`
 
 ### Position  
-- `outcomes::split<T>(position: &mut Position<T>, amount: u64, ctx: &mut TxContext): Position<T>`
-- `outcomes::join<T>(position: &mut Position<T>, other: Position<T>)`
-- `outcomes::destroy_zero<T>(position: Position<T>)`
-- `outcomes::into_balance<T>(position: Position<T>): Balance<T>`
-- `outcomes::from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Position<T>`
+- `position::split<T>(position: &mut Position<T>, amount: u64, ctx: &mut TxContext): Position<T>`
+- `position::join<T>(position: &mut Position<T>, other: Position<T>)`
+- `position::destroy_zero<T>(position: Position<T>)`
+- `position::into_balance<T>(position: Position<T>): Balance<T>`
+- `position::from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Position<T>`
 
 ### Getters
-- `outcomes::value<T>(position: &Position<T>): u64`
-- `outcomes::outcome_index<T>(position: &Position<T>): u64`
-- `outcomes::market_id<T>(position: &Position<T>): ID`
-- `outcomes::total_supply<T>(treasury: &TreasuryCap<T>, outcome_index: u64): u64`
+- `position::value<T>(position: &Position<T>): u64`
+- `position::outcome_index<T>(position: &Position<T>): u64`
+- `position::market_id<T>(position: &Position<T>): ID`
+- `supply::total_supply<T>(manager: &SupplyManager<T>, outcome_index: u64): u64`
 
 ## Design Decisions
 
@@ -69,7 +69,7 @@ module my_market::prediction {
 
 1. **Type ownership** via witness pattern - outcomes can be tied to a platform
 2. **Market binding** via UID reference
-3. **Capability control** via TreasuryCap
+3. **Capability control** via SupplyManagerCap
 4. **Overflow protection** in minting and burning
 
 ## vs Alternatives
