@@ -229,6 +229,51 @@ public fun market_id<T>(manager: &SupplyManager<T>): ID {
     manager.market_id
 }
 
+/// Get the SupplyManager's own ID
+///
+/// # Arguments
+/// * `manager` - SupplyManager to query
+///
+/// # Returns
+/// * `ID` - The SupplyManager's unique ID
+public fun id<T>(manager: &SupplyManager<T>): ID {
+    manager.id.to_inner()
+}
+
+/// Get which SupplyManager this capability controls
+///
+/// # Arguments
+/// * `cap` - SupplyManagerCap to query
+///
+/// # Returns
+/// * `ID` - ID of the SupplyManager this cap can control
+public fun supply_manager_id<T>(cap: &SupplyManagerCap<T>): ID {
+    cap.supply_manager_id
+}
+
+/// Get the capability's own ID
+///
+/// # Arguments
+/// * `cap` - SupplyManagerCap to query
+///
+/// # Returns
+/// * `ID` - The capability's unique ID
+public fun cap_id<T>(cap: &SupplyManagerCap<T>): ID {
+    cap.id.to_inner()
+}
+
+/// Check if a capability can control a specific SupplyManager
+///
+/// # Arguments
+/// * `cap` - SupplyManagerCap to check
+/// * `manager` - SupplyManager to check against
+///
+/// # Returns
+/// * `bool` - True if cap can control this manager
+public fun is_manager_cap<T>(cap: &SupplyManagerCap<T>, manager: &SupplyManager<T>): bool {
+    cap.supply_manager_id == manager.id.to_inner()
+}
+
 /// Helper macro for u64 maximum value
 /// Used in overflow protection
 macro fun u64_max(): u64 {

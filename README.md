@@ -53,10 +53,26 @@ module my_market::prediction {
 - `position::from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Position<T>`
 
 ### Getters
+
+**Position getters:**
 - `position::value<T>(position: &Position<T>): u64`
 - `position::outcome_index<T>(position: &Position<T>): u64`
 - `position::market_id<T>(position: &Position<T>): ID`
+- `position::id<T>(position: &Position<T>): ID`
+- `position::is_zero<T>(position: &Position<T>): bool`
+- `position::belongs_to_market<T>(position: &Position<T>, market_id: ID): bool`
+
+**Supply Manager getters:**
 - `supply::total_supply<T>(manager: &SupplyManager<T>, outcome_index: u64): u64`
+- `supply::supply_values<T>(manager: &SupplyManager<T>): vector<u64>`
+- `supply::num_outcomes<T>(manager: &SupplyManager<T>): u64`
+- `supply::market_id<T>(manager: &SupplyManager<T>): ID`
+- `supply::id<T>(manager: &SupplyManager<T>): ID`
+
+**Supply Manager Capability getters:**
+- `supply::supply_manager_id<T>(cap: &SupplyManagerCap<T>): ID`
+- `supply::cap_id<T>(cap: &SupplyManagerCap<T>): ID`
+- `supply::is_manager_cap<T>(cap: &SupplyManagerCap<T>, manager: &SupplyManager<T>): bool`
 
 ## Design Decisions
 

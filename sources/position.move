@@ -155,6 +155,30 @@ public fun market_id<T>(position: &Position<T>): ID {
     position.balance.market_id
 }
 
+/// Get the position's unique ID
+public fun id<T>(position: &Position<T>): ID {
+    position.id.to_inner()
+}
+
+/// Check if position has zero value
+/// 
+/// Useful before calling destroy_zero to avoid abort
+public fun is_zero<T>(position: &Position<T>): bool {
+    position.balance.value == 0
+}
+
+/// Check if position belongs to a specific market
+/// 
+/// # Arguments
+/// * `position` - Position to check
+/// * `market_id` - Market ID to verify against
+/// 
+/// # Returns
+/// * `bool` - True if position belongs to this market
+public fun belongs_to_market<T>(position: &Position<T>, market_id: ID): bool {
+    position.balance.market_id == market_id
+}
+
 /// Convert a Position object to raw Balance
 /// 
 /// Destroys the Position wrapper and returns the underlying Balance.
