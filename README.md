@@ -41,7 +41,7 @@ module my_market::prediction {
 ## Core API
 
 ### Supply Manager
-- `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64, ctx: &mut TxContext): (SupplyManager<T>, SupplyManagerCap<T>)`
+- `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64): (SupplyManager<T>, SupplyManagerCap<T>)`
 - `supply::mint<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, outcome_index: u64, value: u64, ctx: &mut TxContext): Position<T>`
 - `supply::burn<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, position: Position<T>): u64`
 
