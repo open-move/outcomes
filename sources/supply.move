@@ -57,6 +57,7 @@ public struct SupplyManagerCap<phantom T> has key, store {
     supply_manager_id: ID,
 }
 
+public struct SupplyManagerKey() has copy, drop, store;
 public struct SupplyManagerCapKey() has copy, drop, store;
 
 /// Error codes
@@ -87,14 +88,13 @@ const ECapSupplyManagerMismatch: u64 = 4;
 /// - Capability links to specific supply manager
 public fun create<T: drop>(
     _witness: T,
-    market: &UID,
+    market: &mut UID,
     num_outcomes: u64,
-    ctx: &mut TxContext,
 ): (SupplyManager<T>, SupplyManagerCap<T>) {
     let supplies = vector::tabulate!(num_outcomes, |i| Supply { outcome_index: i, value: 0 });
 
     let mut supply_manager = SupplyManager {
-        id: object::new(ctx),
+        id: derived_object::claim(market, SupplyManagerKey()),
         supplies,
         market_id: market.to_inner(),
     };

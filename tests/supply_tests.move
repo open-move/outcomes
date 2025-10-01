@@ -8,10 +8,10 @@ public struct TEST has drop {}
 #[test]
 fun test_supply_creation() {
     let ctx = &mut sui::tx_context::dummy();
-    let market_uid = sui::object::new(ctx);
+    let mut market_uid = sui::object::new(ctx);
     let market_id = market_uid.to_inner();
 
-    let (supply_manager, cap) = supply::create(TEST {}, &market_uid, 2, ctx);
+    let (supply_manager, cap) = supply::create(TEST {}, &mut market_uid, 2);
 
     assert!(supply_manager.num_outcomes() == 2);
     assert!(supply_manager.market_id() == market_id);
@@ -31,8 +31,8 @@ fun test_supply_creation() {
 #[test]
 fun test_mint_and_burn() {
     let ctx = &mut sui::tx_context::dummy();
-    let market_uid = sui::object::new(ctx);
-    let (mut supply_manager, cap) = supply::create(TEST {}, &market_uid, 2, ctx);
+    let mut market_uid = sui::object::new(ctx);
+    let (mut supply_manager, cap) = supply::create(TEST {}, &mut market_uid, 2);
 
     // Mint positions
     let pos1 = supply::mint(&cap, &mut supply_manager, 0, 100, ctx);
@@ -58,8 +58,8 @@ fun test_mint_and_burn() {
 #[test]
 fun test_multiple_mints() {
     let ctx = &mut sui::tx_context::dummy();
-    let market_uid = sui::object::new(ctx);
-    let (mut supply_manager, cap) = supply::create(TEST {}, &market_uid, 2, ctx);
+    let mut market_uid = sui::object::new(ctx);
+    let (mut supply_manager, cap) = supply::create(TEST {}, &mut market_uid, 2);
 
     let pos1 = supply::mint(&cap, &mut supply_manager, 0, 100, ctx);
     let pos2 = supply::mint(&cap, &mut supply_manager, 0, 50, ctx);
@@ -82,8 +82,8 @@ fun test_multiple_mints() {
 #[expected_failure(abort_code = supply::EInvalidOutcomeIndex)]
 fun test_mint_invalid_outcome() {
     let ctx = &mut sui::tx_context::dummy();
-    let market_uid = sui::object::new(ctx);
-    let (mut supply_manager, cap) = supply::create(TEST {}, &market_uid, 2, ctx);
+    let mut market_uid = sui::object::new(ctx);
+    let (mut supply_manager, cap) = supply::create(TEST {}, &mut market_uid, 2);
 
     let pos = supply::mint(&cap, &mut supply_manager, 2, 100, ctx); // Should fail
 
@@ -97,11 +97,11 @@ fun test_mint_invalid_outcome() {
 #[expected_failure(abort_code = supply::EMarketOutcomeMismatch)]
 fun test_burn_wrong_market() {
     let ctx = &mut sui::tx_context::dummy();
-    let market_uid1 = sui::object::new(ctx);
-    let market_uid2 = sui::object::new(ctx);
+    let mut market_uid1 = sui::object::new(ctx);
+    let mut market_uid2 = sui::object::new(ctx);
 
-    let (mut supply1_manager, cap1) = supply::create(TEST {}, &market_uid1, 2, ctx);
-    let (mut supply2_manager, cap2) = supply::create(TEST {}, &market_uid2, 2, ctx);
+    let (mut supply1_manager, cap1) = supply::create(TEST {}, &mut market_uid1, 2);
+    let (mut supply2_manager, cap2) = supply::create(TEST {}, &mut market_uid2, 2);
 
     let pos = supply::mint(&cap1, &mut supply1_manager, 0, 100, ctx);
     supply::burn(&cap2, &mut supply2_manager, pos); // Should fail - wrong market
@@ -118,8 +118,8 @@ fun test_burn_wrong_market() {
 #[expected_failure(abort_code = supply::EInvalidOutcomeIndex)]
 fun test_total_supply_invalid() {
     let ctx = &mut sui::tx_context::dummy();
-    let market_uid = sui::object::new(ctx);
-    let (supply_manager, cap) = supply::create(TEST {}, &market_uid, 2, ctx);
+    let mut market_uid = sui::object::new(ctx);
+    let (supply_manager, cap) = supply::create(TEST {}, &mut market_uid, 2);
 
     let _supply = supply_manager.total_supply(5); // Should fail
 
