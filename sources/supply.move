@@ -76,7 +76,6 @@ const ECapSupplyManagerMismatch: u64 = 4;
 /// * `_witness` - Witness proving caller owns type T (consumed)
 /// * `market` - Reference to the market object (for binding)
 /// * `num_outcomes` - Number of possible outcomes (e.g., 2 for YES/NO)
-/// * `ctx` - TxContext
 ///
 /// # Returns
 /// * `(SupplyManager<T>, SupplyManagerCap<T>)` - Supply manager and capability
