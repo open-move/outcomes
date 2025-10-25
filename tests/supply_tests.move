@@ -34,14 +34,14 @@ fun test_mint_and_burn() {
     let mut market_uid = sui::object::new(ctx);
     let (mut supply_manager, cap) = supply::create(TEST {}, &mut market_uid, 2);
 
-    // Mint positions
+    // Mint shares
     let pos1 = supply::mint(&cap, &mut supply_manager, 0, 100, ctx);
     let pos2 = supply::mint(&cap, &mut supply_manager, 1, 50, ctx);
 
     assert!(supply_manager.total_supply(0) == 100);
     assert!(supply_manager.total_supply(1) == 50);
 
-    // Burn positions
+    // Burn shares
     let burned1 = supply::burn(&cap, &mut supply_manager, pos1);
     let burned2 = supply::burn(&cap, &mut supply_manager, pos2);
 
@@ -90,7 +90,7 @@ fun test_mint_invalid_outcome() {
     market_uid.delete();
     sui::test_utils::destroy(supply_manager);
     sui::test_utils::destroy(cap);
-    outcomes::position::destroy_for_testing(pos);
+    outcomes::share::destroy_for_testing(pos);
 }
 
 #[test]

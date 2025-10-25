@@ -1,6 +1,6 @@
 /// Supply management for outcome tokens
 ///
-/// This module manages the supply and minting/burning of outcome positions.
+/// This module manages the supply and minting/burning of outcome shares.
 /// Each market gets one SupplyManager that controls all outcome minting for that market.
 ///
 /// Key features:
@@ -11,7 +11,7 @@
 /// - Market isolation guarantees
 module outcomes::supply;
 
-use outcomes::position::{Self, Position};
+use outcomes::share::{Self, Share};
 use sui::derived_object;
 
 /// Supply tracking for a single outcome
@@ -43,7 +43,7 @@ public struct SupplyManager<phantom T> has key, store {
 
 /// Capability to control a SupplyManager
 ///
-/// The holder of this capability can mint and burn positions from the associated
+/// The holder of this capability can mint and burn shares from the associated
 /// SupplyManager. Each SupplyManager should have exactly one SupplyManagerCap.
 ///
 /// Security features:
@@ -70,7 +70,7 @@ const ECapSupplyManagerMismatch: u64 = 4;
 /// Create a new supply manager and capability for a market
 ///
 /// Uses witness pattern to ensure only the type owner can create supply managers.
-/// The market UID binding ensures positions can only be burned by the correct market.
+/// The market UID binding ensures shares can only be burned by the correct market.
 ///
 /// # Arguments
 /// * `_witness` - Witness proving caller owns type T (consumed)
@@ -82,7 +82,7 @@ const ECapSupplyManagerMismatch: u64 = 4;
 ///
 /// # Security
 /// - Witness pattern prevents unauthorized supply manager creation
-/// - Market UID binding prevents cross-market position abuse
+/// - Market UID binding prevents cross-market share abuse
 /// - Supply vector initialized with zeros for each outcome
 /// - Capability links to specific supply manager
 public fun create<T: drop>(
@@ -106,9 +106,9 @@ public fun create<T: drop>(
     (supply_manager, supply_manager_cap)
 }
 
-/// Mint new outcome positions
+/// Mint new outcome shares
 ///
-/// Creates new position tokens for a specific outcome. Increases the supply
+/// Creates new share tokens for a specific outcome. Increases the supply
 /// tracking for that outcome. Includes overflow protection.
 ///
 /// # Arguments
@@ -119,7 +119,7 @@ public fun create<T: drop>(
 /// * `ctx` - TxContext
 ///
 /// # Returns
-/// * `Position<T>` - New position with the minted tokens
+/// * `Share<T>` - New share with the minted tokens
 ///
 /// # Aborts
 /// * `ECapSupplyManagerMismatch` - If cap doesn't match manager
@@ -131,7 +131,7 @@ public fun mint<T>(
     outcome_index: u64,
     value: u64,
     ctx: &mut TxContext,
-): Position<T> {
+): Share<T> {
     assert!(cap.supply_manager_id == manager.id.to_inner(), ECapSupplyManagerMismatch);
     assert!(outcome_index < manager.supplies.length(), EInvalidOutcomeIndex);
 
@@ -139,35 +139,35 @@ public fun mint<T>(
     assert!(value < (u64_max!() - supply.value), EOutcomeSupplyOverflow);
 
     supply.value = supply.value + value;
-    position::new(manager.market_id, outcome_index, value, ctx)
+    share::new(manager.market_id, outcome_index, value, ctx)
 }
 
-/// Burn outcome positions
+/// Burn outcome shares
 ///
-/// Destroys position tokens and decreases the supply tracking.
-/// Ensures the position belongs to this supply manager's market.
+/// Destroys share tokens and decreases the supply tracking.
+/// Ensures the share belongs to this supply manager's market.
 ///
 /// # Arguments
 /// * `cap` - SupplyManagerCap (proves authorization to burn)
 /// * `manager` - SupplyManager to burn from
-/// * `position` - Position to burn (consumed)
+/// * `share` - Share to burn (consumed)
 ///
 /// # Returns
 /// * `u64` - Amount of tokens that were burned
 ///
 /// # Aborts
 /// * `ECapSupplyManagerMismatch` - If cap doesn't match manager
-/// * `EMarketOutcomeMismatch` - If position belongs to different market
+/// * `EMarketOutcomeMismatch` - If share belongs to different market
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
 /// * `EOutcomeSupplyUnderflow` - If trying to burn more than current supply
 public fun burn<T>(
     cap: &SupplyManagerCap<T>,
     manager: &mut SupplyManager<T>,
-    position: Position<T>,
+    share: Share<T>,
 ): u64 {
     assert!(cap.supply_manager_id == manager.id.to_inner(), ECapSupplyManagerMismatch);
 
-    let (market_id, outcome_index, value) = position.destroy();
+    let (market_id, outcome_index, value) = share.destroy();
 
     assert!(market_id == manager.market_id, EMarketOutcomeMismatch);
     assert!(outcome_index < manager.supplies.length(), EInvalidOutcomeIndex);
