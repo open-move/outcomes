@@ -5,15 +5,15 @@ A standard for prediction markets outcomes on Sui. Inspired by Gnosis Conditiona
 ## Why
 
 - Sui's `Coin` or balance `Supply` standard requires deploying new packages per market (impractical)
-- Need outcome differentiation (YES/NO positions)
+- Need outcome differentiation (YES/NO shares)
 - Need market isolation (prevent cross-market contamination)
-- Enable DeFi composability (use positions as collateral, in Lending, in AMMs, etc)
+- Enable DeFi composability (use shares as collateral, in Lending, in AMMs, etc)
 
 ## Features
 
 - **Witness-based supply manager creation** - only market module can mint
-- **Market isolation** - positions tied to specific markets via UID
-- **Position operations** - split, join, destroy_zero
+- **Market isolation** - shares tied to specific markets via UID
+- **Share operations** - split, join, destroy_zero
 - **Supply tracking** - monitor minted/burned per outcome
 - **DeFi ready** - `key + store` for wallets, kiosks, transfers
 
@@ -42,25 +42,26 @@ module my_market::prediction {
 
 ### Supply Manager
 - `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64): (SupplyManager<T>, SupplyManagerCap<T>)`
-- `supply::mint<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, outcome_index: u64, value: u64, ctx: &mut TxContext): Position<T>`
-- `supply::burn<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, position: Position<T>): u64`
+- `supply::mint<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, outcome_index: u64, value: u64, ctx: &mut TxContext): Share<T>`
+- `supply::burn<T>(cap: &SupplyManagerCap<T>, manager: &mut SupplyManager<T>, share: Share<T>): u64`
 
-### Position  
-- `position::split<T>(position: &mut Position<T>, amount: u64, ctx: &mut TxContext): Position<T>`
-- `position::join<T>(position: &mut Position<T>, other: Position<T>)`
-- `position::destroy_zero<T>(position: Position<T>)`
-- `position::into_balance<T>(position: Position<T>): Balance<T>`
-- `position::from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Position<T>`
+### Share  
+- `share::split<T>(share: &mut Share<T>, amount: u64, ctx: &mut TxContext): Share<T>`
+- `share::join<T>(share: &mut Share<T>, other: Share<T>)`
+- `share::destroy_zero<T>(share: Share<T>)`
+- `share::keep_or_destroy_zero<T>(share: Share<T>)`
+- `share::into_balance<T>(share: Share<T>): Balance<T>`
+- `share::from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Share<T>`
 
 ### Getters
 
-**Position getters:**
-- `position::value<T>(position: &Position<T>): u64`
-- `position::outcome_index<T>(position: &Position<T>): u64`
-- `position::market_id<T>(position: &Position<T>): ID`
-- `position::id<T>(position: &Position<T>): ID`
-- `position::is_zero<T>(position: &Position<T>): bool`
-- `position::belongs_to_market<T>(position: &Position<T>, market_id: ID): bool`
+**Share getters:**
+- `share::value<T>(share: &Share<T>): u64`
+- `share::outcome_index<T>(share: &Share<T>): u64`
+- `share::market_id<T>(share: &Share<T>): ID`
+- `share::id<T>(share: &Share<T>): ID`
+- `share::is_zero<T>(share: &Share<T>): bool`
+- `share::belongs_to_market<T>(share: &Share<T>, market_id: ID): bool`
 
 **Supply Manager getters:**
 - `supply::total_supply<T>(manager: &SupplyManager<T>, outcome_index: u64): u64`
@@ -102,9 +103,9 @@ module my_market::prediction {
 
 ## DeFi Composability
 
-Standardized positions enable:
+Standardized shares enable:
 - **Transfer and trading** - `key + store` abilities for wallets and explorers
-- **AMM liquidity** - Trade positions against tokens or other positions  
+- **AMM liquidity** - Trade shares against tokens or other shares  
 - **Marketplace integration** - List on NFT marketplaces via kiosks
 
 One integration supports ALL markets.
@@ -112,8 +113,8 @@ One integration supports ALL markets.
 ## Coming Soon
 
 - **Conditional tokens** - markets that depend on other market outcomes
-- **Batch operations** - mint/burn multiple positions efficiently
-- **Flash position loans** - borrow positions within a transaction
+- **Batch operations** - mint/burn multiple shares efficiently
+- **Flash share loans** - borrow shares within a transaction
 
 ## License
 
