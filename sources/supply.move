@@ -1,10 +1,10 @@
 /// Supply management for outcome tokens
 ///
 /// This module manages the supply and minting/burning of outcome shares.
-/// Each market gets one SupplyManager that controls all outcome minting for that market.
+/// Each market gets one SupplyState that controls all outcome minting for that market.
 ///
 /// Key features:
-/// - Witness-based supply manager creation (type ownership)
+/// - Witness-based supply state creation (type ownership)
 /// - Market binding via UID reference
 /// - Per-outcome supply tracking
 /// - Overflow protection in minting
@@ -23,53 +23,53 @@ public struct Supply<phantom T> has store {
     outcome_index: u64,
 }
 
-/// Supply manager that tracks outcome supplies for a market
+/// Supply state that tracks outcome supplies for a market
 ///
 /// This object contains the supply data and can be shared for read access.
-/// Requires SupplyManagerCap for minting/burning operations.
+/// Requires SupplyCap for minting/burning operations.
 ///
 /// Security features:
 /// - Created with witness pattern (proves type ownership)
 /// - Bound to specific market via market_id
 /// - Tracks supplies to prevent unauthorized inflation
-public struct SupplyManager<phantom T> has key, store {
-    /// Unique identifier for this supply manager
+public struct SupplyState<phantom T> has key, store {
+    /// Unique identifier for this supply state
     id: UID,
-    /// ID of the market this supply manager belongs to
+    /// ID of the market this supply state belongs to
     market_id: ID,
     /// Supply tracking for each outcome (indexed by outcome_index)
     supplies: vector<Supply<T>>,
 }
 
-/// Capability to control a SupplyManager
+/// Capability to control a SupplyState
 ///
 /// The holder of this capability can mint and burn shares from the associated
-/// SupplyManager. Each SupplyManager should have exactly one SupplyManagerCap.
+/// SupplyState. Each SupplyState should have exactly one SupplyCap.
 ///
 /// Security features:
-/// - Links to specific SupplyManager via supply_manager_id
+/// - Links to specific SupplyState via supply_state_id
 /// - Can be kept private by market or transferred to delegates
 /// - Required for all minting/burning operations
-public struct SupplyManagerCap<phantom T> has key, store {
+public struct SupplyCap<phantom T> has key, store {
     /// Unique identifier for this capability
     id: UID,
-    /// ID of the SupplyManager this capability controls
-    supply_manager_id: ID,
+    /// ID of the SupplyState this capability controls
+    supply_state_id: ID,
 }
 
-public struct SupplyManagerKey() has copy, drop, store;
-public struct SupplyManagerCapKey() has copy, drop, store;
+public struct SupplyStateKey() has copy, drop, store;
+public struct SupplyCapKey() has copy, drop, store;
 
 /// Error codes
 const EInvalidOutcomeIndex: u64 = 0;
 const EMarketOutcomeMismatch: u64 = 1;
 const EOutcomeSupplyUnderflow: u64 = 2;
 const EOutcomeSupplyOverflow: u64 = 3;
-const ECapSupplyManagerMismatch: u64 = 4;
+const ECapSupplyStateMismatch: u64 = 4;
 
-/// Create a new supply manager and capability for a market
+/// Create a new supply state and capability for a market
 ///
-/// Uses witness pattern to ensure only the type owner can create supply managers.
+/// Uses witness pattern to ensure only the type owner can create supply states.
 /// The market UID binding ensures shares can only be burned by the correct market.
 ///
 /// # Arguments
@@ -78,32 +78,32 @@ const ECapSupplyManagerMismatch: u64 = 4;
 /// * `num_outcomes` - Number of possible outcomes (e.g., 2 for YES/NO)
 ///
 /// # Returns
-/// * `(SupplyManager<T>, SupplyManagerCap<T>)` - Supply manager and capability
+/// * `(SupplyState<T>, SupplyCap<T>)` - Supply state and capability
 ///
 /// # Security
-/// - Witness pattern prevents unauthorized supply manager creation
+/// - Witness pattern prevents unauthorized supply state creation
 /// - Market UID binding prevents cross-market share abuse
 /// - Supply vector initialized with zeros for each outcome
-/// - Capability links to specific supply manager
+/// - Capability links to specific supply state
 public fun create<T: drop>(
     _witness: T,
     market: &mut UID,
     num_outcomes: u64,
-): (SupplyManager<T>, SupplyManagerCap<T>) {
+): (SupplyState<T>, SupplyCap<T>) {
     let supplies = vector::tabulate!(num_outcomes, |i| Supply { outcome_index: i, value: 0 });
 
-    let mut supply_manager = SupplyManager {
-        id: derived_object::claim(market, SupplyManagerKey()),
+    let mut supply_state = SupplyState {
+        id: derived_object::claim(market, SupplyStateKey()),
         supplies,
         market_id: market.to_inner(),
     };
 
-    let supply_manager_cap = SupplyManagerCap {
-        id: derived_object::claim(&mut supply_manager.id, SupplyManagerCapKey()),
-        supply_manager_id: supply_manager.id.to_inner(),
+    let supply_state_cap = SupplyCap {
+        id: derived_object::claim(&mut supply_state.id, SupplyCapKey()),
+        supply_state_id: supply_state.id.to_inner(),
     };
 
-    (supply_manager, supply_manager_cap)
+    (supply_state, supply_state_cap)
 }
 
 /// Mint new outcome shares
@@ -112,8 +112,8 @@ public fun create<T: drop>(
 /// tracking for that outcome. Includes overflow protection.
 ///
 /// # Arguments
-/// * `cap` - SupplyManagerCap (proves authorization to mint)
-/// * `manager` - SupplyManager to mint from
+/// * `cap` - SupplyCap (proves authorization to mint)
+/// * `state` - SupplyState to mint from
 /// * `outcome_index` - Which outcome to mint (0, 1, 2, etc.)
 /// * `value` - Amount of tokens to mint
 /// * `ctx` - TxContext
@@ -122,57 +122,57 @@ public fun create<T: drop>(
 /// * `Share<T>` - New share with the minted tokens
 ///
 /// # Aborts
-/// * `ECapSupplyManagerMismatch` - If cap doesn't match manager
+/// * `ECapSupplyStateMismatch` - If cap doesn't match state
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
 /// * `EOutcomeSupplyOverflow` - If minting would cause u64 overflow
 public fun mint<T>(
-    cap: &SupplyManagerCap<T>,
-    manager: &mut SupplyManager<T>,
+    cap: &SupplyCap<T>,
+    state: &mut SupplyState<T>,
     outcome_index: u64,
     value: u64,
     ctx: &mut TxContext,
 ): Share<T> {
-    assert!(cap.supply_manager_id == manager.id.to_inner(), ECapSupplyManagerMismatch);
-    assert!(outcome_index < manager.supplies.length(), EInvalidOutcomeIndex);
+    assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
+    assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
 
-    let supply = &mut manager.supplies[outcome_index];
+    let supply = &mut state.supplies[outcome_index];
     assert!(value < (u64_max!() - supply.value), EOutcomeSupplyOverflow);
 
     supply.value = supply.value + value;
-    share::new(manager.market_id, outcome_index, value, ctx)
+    share::new(state.market_id, outcome_index, value, ctx)
 }
 
 /// Burn outcome shares
 ///
 /// Destroys share tokens and decreases the supply tracking.
-/// Ensures the share belongs to this supply manager's market.
+/// Ensures the share belongs to this supply state's market.
 ///
 /// # Arguments
-/// * `cap` - SupplyManagerCap (proves authorization to burn)
-/// * `manager` - SupplyManager to burn from
+/// * `cap` - SupplyCap (proves authorization to burn)
+/// * `state` - SupplyState to burn from
 /// * `share` - Share to burn (consumed)
 ///
 /// # Returns
 /// * `u64` - Amount of tokens that were burned
 ///
 /// # Aborts
-/// * `ECapSupplyManagerMismatch` - If cap doesn't match manager
+/// * `ECapSupplyStateMismatch` - If cap doesn't match state
 /// * `EMarketOutcomeMismatch` - If share belongs to different market
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
 /// * `EOutcomeSupplyUnderflow` - If trying to burn more than current supply
 public fun burn<T>(
-    cap: &SupplyManagerCap<T>,
-    manager: &mut SupplyManager<T>,
+    cap: &SupplyCap<T>,
+    state: &mut SupplyState<T>,
     share: Share<T>,
 ): u64 {
-    assert!(cap.supply_manager_id == manager.id.to_inner(), ECapSupplyManagerMismatch);
+    assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
 
     let (market_id, outcome_index, value) = share.destroy();
 
-    assert!(market_id == manager.market_id, EMarketOutcomeMismatch);
-    assert!(outcome_index < manager.supplies.length(), EInvalidOutcomeIndex);
+    assert!(market_id == state.market_id, EMarketOutcomeMismatch);
+    assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
 
-    let supply = &mut manager.supplies[outcome_index];
+    let supply = &mut state.supplies[outcome_index];
     assert!(supply.value >= value, EOutcomeSupplyUnderflow);
 
     supply.value = supply.value - value;
@@ -182,7 +182,7 @@ public fun burn<T>(
 /// Get total supply for a specific outcome
 ///
 /// # Arguments
-/// * `manager` - SupplyManager to query
+/// * `state` - SupplyState to query
 /// * `outcome_index` - Which outcome (0, 1, 2, etc.)
 ///
 /// # Returns
@@ -190,87 +190,87 @@ public fun burn<T>(
 ///
 /// # Aborts
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
-public fun total_supply<T>(manager: &SupplyManager<T>, outcome_index: u64): u64 {
-    assert!(outcome_index < manager.supplies.length(), EInvalidOutcomeIndex);
-    manager.supplies[outcome_index].value
+public fun total_supply<T>(state: &SupplyState<T>, outcome_index: u64): u64 {
+    assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
+    state.supplies[outcome_index].value
 }
 
 /// Get supply values for all outcomes
 ///
 /// # Arguments
-/// * `manager` - SupplyManager to query
+/// * `state` - SupplyState to query
 ///
 /// # Returns
 /// * `vector<u64>` - Supply for each outcome [outcome0_supply, outcome1_supply, ...]
-public fun supply_values<T>(manager: &SupplyManager<T>): vector<u64> {
-    manager.supplies.map_ref!(|supply| supply.value)
+public fun supply_values<T>(state: &SupplyState<T>): vector<u64> {
+    state.supplies.map_ref!(|supply| supply.value)
 }
 
 /// Get number of possible outcomes for this market
 ///
 /// # Arguments
-/// * `manager` - SupplyManager to query
+/// * `state` - SupplyState to query
 ///
 /// # Returns
 /// * `u64` - Number of outcomes (e.g., 2 for YES/NO)
-public fun num_outcomes<T>(manager: &SupplyManager<T>): u64 {
-    manager.supplies.length()
+public fun num_outcomes<T>(state: &SupplyState<T>): u64 {
+    state.supplies.length()
 }
 
-/// Get the market ID this supply manager belongs to
+/// Get the market ID this supply state belongs to
 ///
 /// # Arguments
-/// * `manager` - SupplyManager to query
+/// * `state` - SupplyState to query
 ///
 /// # Returns
-/// * `ID` - Market ID this supply manager was created for
-public fun market_id<T>(manager: &SupplyManager<T>): ID {
-    manager.market_id
+/// * `ID` - Market ID this supply state was created for
+public fun market_id<T>(state: &SupplyState<T>): ID {
+    state.market_id
 }
 
-/// Get the SupplyManager's own ID
+/// Get the SupplyState's own ID
 ///
 /// # Arguments
-/// * `manager` - SupplyManager to query
+/// * `state` - SupplyState to query
 ///
 /// # Returns
-/// * `ID` - The SupplyManager's unique ID
-public fun id<T>(manager: &SupplyManager<T>): ID {
-    manager.id.to_inner()
+/// * `ID` - The SupplyState's unique ID
+public fun id<T>(state: &SupplyState<T>): ID {
+    state.id.to_inner()
 }
 
-/// Get which SupplyManager this capability controls
+/// Get which SupplyState this capability controls
 ///
 /// # Arguments
-/// * `cap` - SupplyManagerCap to query
+/// * `cap` - SupplyCap to query
 ///
 /// # Returns
-/// * `ID` - ID of the SupplyManager this cap can control
-public fun supply_manager_id<T>(cap: &SupplyManagerCap<T>): ID {
-    cap.supply_manager_id
+/// * `ID` - ID of the SupplyState this cap can control
+public fun supply_state_id<T>(cap: &SupplyCap<T>): ID {
+    cap.supply_state_id
 }
 
 /// Get the capability's own ID
 ///
 /// # Arguments
-/// * `cap` - SupplyManagerCap to query
+/// * `cap` - SupplyCap to query
 ///
 /// # Returns
 /// * `ID` - The capability's unique ID
-public fun cap_id<T>(cap: &SupplyManagerCap<T>): ID {
+public fun cap_id<T>(cap: &SupplyCap<T>): ID {
     cap.id.to_inner()
 }
 
-/// Check if a capability can control a specific SupplyManager
+/// Check if a capability can control a specific SupplyState
 ///
 /// # Arguments
-/// * `cap` - SupplyManagerCap to check
-/// * `manager` - SupplyManager to check against
+/// * `cap` - SupplyCap to check
+/// * `state` - SupplyState to check against
 ///
 /// # Returns
-/// * `bool` - True if cap can control this manager
-public fun is_manager_cap<T>(cap: &SupplyManagerCap<T>, manager: &SupplyManager<T>): bool {
-    cap.supply_manager_id == manager.id.to_inner()
+/// * `bool` - True if cap can control this state
+public fun is_state_cap<T>(cap: &SupplyCap<T>, state: &SupplyState<T>): bool {
+    cap.supply_state_id == state.id.to_inner()
 }
 
 /// Helper macro for u64 maximum value
