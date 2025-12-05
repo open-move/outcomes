@@ -137,6 +137,14 @@ public fun mint<T>(
     state.mint_internal(outcome_index, value, ctx)
 }
 
+/// Mint one share per outcome.
+///
+/// Convenience wrapper to mint the same amount across all outcome indices.
+/// Returns an empty vector when `num_outcomes == 0`.
+///
+/// # Aborts
+/// * `ECapSupplyStateMismatch` - If cap doesn't match state
+/// * `EOutcomeSupplyOverflow` - If any outcome mint would overflow
 public fun mint_vec<T>(
     cap: &SupplyCap<T>,
     state: &mut SupplyState<T>,
@@ -170,6 +178,16 @@ public fun burn<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, share: Share<
     state.burn_internal(share)
 }
 
+/// Burn a vector of outcome shares.
+///
+/// Destroys each share and updates supply tracking. Does not enforce
+/// one-per-outcome semantics; caller must ensure the vector is well-formed.
+///
+/// # Aborts
+/// * `ECapSupplyStateMismatch` - If cap doesn't match state
+/// * `EMarketOutcomeMismatch` - If any share belongs to a different market
+/// * `EInvalidOutcomeIndex` - If a share references an invalid outcome
+/// * `EOutcomeSupplyUnderflow` - If burning would underflow supply
 public fun burn_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, shares: vector<Share<T>>) {
     assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
     shares.destroy!(|share| state.burn_internal(share))
@@ -269,6 +287,10 @@ public fun is_state_cap<T>(cap: &SupplyCap<T>, state: &SupplyState<T>): bool {
     cap.supply_state_id == state.id.to_inner()
 }
 
+/// Internal mint helper.
+///
+/// Assumes the caller already validated cap/state linkage and outcome index.
+/// Performs overflow-checked supply update and creates a new share.
 fun mint_internal<T>(
     state: &mut SupplyState<T>,
     outcome_index: u64,
@@ -282,6 +304,10 @@ fun mint_internal<T>(
     share::new(state.market_id, outcome_index, value, ctx)
 }
 
+/// Internal burn helper.
+///
+/// Assumes the caller already validated cap/state linkage.
+/// Enforces market binding, outcome bounds, and supply underflow checks.
 fun burn_internal<T>(state: &mut SupplyState<T>, share: Share<T>): u64 {
     let (market_id, outcome_index, value) = share.destroy();
 
