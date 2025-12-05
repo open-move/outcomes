@@ -134,12 +134,17 @@ public fun mint<T>(
 ): Share<T> {
     assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
     assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
+    state.mint_internal(outcome_index, value, ctx)
+}
 
-    let supply = &mut state.supplies[outcome_index];
-    assert!(value < (u64_max!() - supply.value), EOutcomeSupplyOverflow);
-
-    supply.value = supply.value + value;
-    share::new(state.market_id, outcome_index, value, ctx)
+public fun mint_vec<T>(
+    cap: &SupplyCap<T>,
+    state: &mut SupplyState<T>,
+    value: u64,
+    ctx: &mut TxContext,
+): vector<Share<T>> {
+    assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
+    vector::tabulate!(state.supplies.length(), |i| state.mint_internal(i, value, ctx))
 }
 
 /// Burn outcome shares
@@ -160,23 +165,14 @@ public fun mint<T>(
 /// * `EMarketOutcomeMismatch` - If share belongs to different market
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
 /// * `EOutcomeSupplyUnderflow` - If trying to burn more than current supply
-public fun burn<T>(
-    cap: &SupplyCap<T>,
-    state: &mut SupplyState<T>,
-    share: Share<T>,
-): u64 {
+public fun burn<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, share: Share<T>): u64 {
     assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
+    state.burn_internal(share)
+}
 
-    let (market_id, outcome_index, value) = share.destroy();
-
-    assert!(market_id == state.market_id, EMarketOutcomeMismatch);
-    assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
-
-    let supply = &mut state.supplies[outcome_index];
-    assert!(supply.value >= value, EOutcomeSupplyUnderflow);
-
-    supply.value = supply.value - value;
-    value
+public fun burn_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, shares: vector<Share<T>>) {
+    assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
+    shares.destroy!(|share| state.burn_internal(share))
 }
 
 /// Get total supply for a specific outcome
@@ -271,6 +267,32 @@ public fun cap_id<T>(cap: &SupplyCap<T>): ID {
 /// * `bool` - True if cap can control this state
 public fun is_state_cap<T>(cap: &SupplyCap<T>, state: &SupplyState<T>): bool {
     cap.supply_state_id == state.id.to_inner()
+}
+
+fun mint_internal<T>(
+    state: &mut SupplyState<T>,
+    outcome_index: u64,
+    value: u64,
+    ctx: &mut TxContext,
+): Share<T> {
+    let supply = &mut state.supplies[outcome_index];
+    assert!(value <= (u64_max!() - supply.value), EOutcomeSupplyOverflow);
+
+    supply.value = supply.value + value;
+    share::new(state.market_id, outcome_index, value, ctx)
+}
+
+fun burn_internal<T>(state: &mut SupplyState<T>, share: Share<T>): u64 {
+    let (market_id, outcome_index, value) = share.destroy();
+
+    assert!(market_id == state.market_id, EMarketOutcomeMismatch);
+    assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
+
+    let supply = &mut state.supplies[outcome_index];
+    assert!(supply.value >= value, EOutcomeSupplyUnderflow);
+
+    supply.value = supply.value - value;
+    value
 }
 
 /// Helper macro for u64 maximum value

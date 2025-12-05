@@ -26,8 +26,6 @@ public struct Balance<phantom T> has store {
 ///
 /// Shares have `key + store` abilities making them:
 /// - Transferable via sui::transfer::public_transfer
-/// - Usable in wallets and explorers
-/// - Composable and usable in other DeFi protocols
 /// - Storable in other objects
 public struct Share<phantom T> has key, store {
     id: UID,
