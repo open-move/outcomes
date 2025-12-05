@@ -43,7 +43,9 @@ module my_market::prediction {
 ### Supply State
 - `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64): (SupplyState<T>, SupplyCap<T>)`
 - `supply::mint<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, outcome_index: u64, value: u64, ctx: &mut TxContext): Share<T>`
+- `supply::mint_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, value: u64, ctx: &mut TxContext): vector<Share<T>>` (one per outcome index, empty if `num_outcomes == 0`)
 - `supply::burn<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, share: Share<T>): u64`
+- `supply::burn_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, shares: vector<Share<T>>)` (burns provided shares; caller enforces shape)
 
 ### Share  
 - `share::split<T>(share: &mut Share<T>, amount: u64, ctx: &mut TxContext): Share<T>`
