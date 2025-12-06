@@ -45,12 +45,7 @@ const EShareNotZero: u64 = 2;
 /// * `outcome_index` - Which outcome (0, 1, 2, etc.)
 /// * `value` - Amount of tokens
 /// * `ctx` - TxContext for creating new object
-public(package) fun new(
-    market_id: ID,
-    outcome_index: u64,
-    value: u64,
-    ctx: &mut TxContext,
-): Share {
+public(package) fun new(market_id: ID, outcome_index: u64, value: u64, ctx: &mut TxContext): Share {
     Share {
         id: object::new(ctx),
         balance: Balance { market_id, outcome_index, value },
@@ -124,11 +119,11 @@ public fun join(share: &mut Share, other: Share) {
 ///
 /// Adds the value from each share in `others` to `share` and destroys them.
 /// All shares must be for the same market and outcome.
-/// 
+///
 /// # Arguments
 /// * `share` - Share to add to (modified in place)
 /// * `others` - Vector of shares to consume (destroyed)
-/// 
+///
 ///# Aborts
 /// * `EMarketOutcomeMismatch` - If any shares are from different markets or outcomes
 public fun join_vec(share: Share, others: vector<Share>): Share {
