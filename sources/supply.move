@@ -4,7 +4,7 @@
 /// Each market gets one SupplyState that controls all outcome minting for that market.
 ///
 /// Key features:
-/// - Witness-based supply state creation (type ownership)
+/// - Cap-gated supply state creation
 /// - Market binding via UID reference
 /// - Per-outcome supply tracking
 /// - Overflow protection in minting
@@ -29,8 +29,7 @@ public struct Supply has store {
 /// Requires SupplyCap for minting/burning operations.
 ///
 /// Security features:
-/// - Created with witness pattern (proves type ownership)
-/// - Bound to specific market via market_id
+/// - Bound to a specific market via market_id (derived object)
 /// - Tracks supplies to prevent unauthorized inflation
 public struct SupplyState has key, store {
     /// Unique identifier for this supply state
@@ -57,8 +56,9 @@ public struct SupplyCap has key, store {
     supply_state_id: ID,
 }
 
-public struct SupplyStateKey() has copy, drop, store;
-public struct SupplyCapKey() has copy, drop, store;
+const SUPPLY_STATE_KEY: vector<u8> = b"SUPPLY_STATE";
+
+const SUPPLY_CAP_KEY: vector<u8> = b"SUPPLY_CAP";
 
 /// Error codes
 const EInvalidOutcomeIndex: u64 = 0;
@@ -69,41 +69,33 @@ const ECapSupplyStateMismatch: u64 = 4;
 
 /// Create a new supply state and capability for a market
 ///
-/// Uses witness pattern to ensure only the type owner can create supply states.
 /// The market UID binding ensures shares can only be burned by the correct market.
 ///
 /// # Arguments
-/// * `_witness` - Witness proving caller owns type T (consumed)
 /// * `market` - Reference to the market object (for binding)
 /// * `num_outcomes` - Number of possible outcomes (e.g., 2 for YES/NO)
 ///
 /// # Returns
 /// * `(SupplyState, SupplyCap)` - Supply state and capability
 ///
-/// # Security
-/// - Witness pattern prevents unauthorized supply state creation
 /// - Market UID binding prevents cross-market share abuse
 /// - Supply vector initialized with zeros for each outcome
 /// - Capability links to specific supply state
-public fun create<T: drop>(
-    _witness: T,
-    market: &mut UID,
-    num_outcomes: u64,
-): (SupplyState, SupplyCap) {
+public fun create(market: &mut UID, num_outcomes: u64): (SupplyState, SupplyCap) {
     let supplies = vector::tabulate!(num_outcomes, |i| Supply { outcome_index: i, value: 0 });
 
     let mut supply_state = SupplyState {
-        id: derived_object::claim(market, SupplyStateKey()),
+        id: derived_object::claim(market, SUPPLY_STATE_KEY),
         supplies,
         market_id: market.to_inner(),
     };
 
-    let supply_state_cap = SupplyCap {
-        id: derived_object::claim(&mut supply_state.id, SupplyCapKey()),
+    let supply_cap = SupplyCap {
+        id: derived_object::claim(&mut supply_state.id, SUPPLY_CAP_KEY),
         supply_state_id: supply_state.id.to_inner(),
     };
 
-    (supply_state, supply_state_cap)
+    (supply_state, supply_cap)
 }
 
 /// Mint new outcome shares

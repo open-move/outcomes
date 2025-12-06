@@ -41,7 +41,7 @@ module my_market::prediction {
 ## Core API
 
 ### Supply State
-- `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64): (SupplyState, SupplyCap)`
+- `supply::create(market: &mut UID, num_outcomes: u64): (SupplyState, SupplyCap)`
 - `supply::mint(cap: &SupplyCap, state: &mut SupplyState, outcome_index: u64, value: u64, ctx: &mut TxContext): Share`
 - `supply::mint_vec(cap: &SupplyCap, state: &mut SupplyState, value: u64, ctx: &mut TxContext): vector<Share>` (one per outcome index, empty if `num_outcomes == 0`)
 - `supply::burn(cap: &SupplyCap, state: &mut SupplyState, share: Share): u64`
@@ -86,10 +86,9 @@ module my_market::prediction {
 
 ## Security
 
-1. **Type ownership** via witness pattern - outcomes can be tied to a platform
-2. **Market binding** via UID reference
-3. **Capability control** via SupplyCap
-4. **Overflow protection** in minting and burning
+1. **Market binding** via UID reference
+2. **Capability control** via SupplyCap
+3. **Overflow protection** in minting and burning
 
 ## vs Alternatives
 
