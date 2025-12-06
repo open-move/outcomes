@@ -16,7 +16,7 @@ use sui::derived_object;
 
 /// Supply tracking for a single outcome
 /// Tracks how many tokens have been minted for this specific outcome
-public struct Supply<phantom T> has store {
+public struct Supply has store {
     /// Total amount of tokens minted for this outcome
     value: u64,
     /// Which outcome this tracks (0, 1, 2, etc.)
@@ -32,13 +32,13 @@ public struct Supply<phantom T> has store {
 /// - Created with witness pattern (proves type ownership)
 /// - Bound to specific market via market_id
 /// - Tracks supplies to prevent unauthorized inflation
-public struct SupplyState<phantom T> has key, store {
+public struct SupplyState has key, store {
     /// Unique identifier for this supply state
     id: UID,
     /// ID of the market this supply state belongs to
     market_id: ID,
     /// Supply tracking for each outcome (indexed by outcome_index)
-    supplies: vector<Supply<T>>,
+    supplies: vector<Supply>,
 }
 
 /// Capability to control a SupplyState
@@ -50,7 +50,7 @@ public struct SupplyState<phantom T> has key, store {
 /// - Links to specific SupplyState via supply_state_id
 /// - Can be kept private by market or transferred to delegates
 /// - Required for all minting/burning operations
-public struct SupplyCap<phantom T> has key, store {
+public struct SupplyCap has key, store {
     /// Unique identifier for this capability
     id: UID,
     /// ID of the SupplyState this capability controls
@@ -78,7 +78,7 @@ const ECapSupplyStateMismatch: u64 = 4;
 /// * `num_outcomes` - Number of possible outcomes (e.g., 2 for YES/NO)
 ///
 /// # Returns
-/// * `(SupplyState<T>, SupplyCap<T>)` - Supply state and capability
+/// * `(SupplyState, SupplyCap)` - Supply state and capability
 ///
 /// # Security
 /// - Witness pattern prevents unauthorized supply state creation
@@ -89,7 +89,7 @@ public fun create<T: drop>(
     _witness: T,
     market: &mut UID,
     num_outcomes: u64,
-): (SupplyState<T>, SupplyCap<T>) {
+): (SupplyState, SupplyCap) {
     let supplies = vector::tabulate!(num_outcomes, |i| Supply { outcome_index: i, value: 0 });
 
     let mut supply_state = SupplyState {
@@ -119,19 +119,19 @@ public fun create<T: drop>(
 /// * `ctx` - TxContext
 ///
 /// # Returns
-/// * `Share<T>` - New share with the minted tokens
+/// * `Share` - New share with the minted tokens
 ///
 /// # Aborts
 /// * `ECapSupplyStateMismatch` - If cap doesn't match state
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
 /// * `EOutcomeSupplyOverflow` - If minting would cause u64 overflow
-public fun mint<T>(
-    cap: &SupplyCap<T>,
-    state: &mut SupplyState<T>,
+public fun mint(
+    cap: &SupplyCap,
+    state: &mut SupplyState,
     outcome_index: u64,
     value: u64,
     ctx: &mut TxContext,
-): Share<T> {
+): Share {
     assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
     assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
     state.mint_internal(outcome_index, value, ctx)
@@ -145,12 +145,12 @@ public fun mint<T>(
 /// # Aborts
 /// * `ECapSupplyStateMismatch` - If cap doesn't match state
 /// * `EOutcomeSupplyOverflow` - If any outcome mint would overflow
-public fun mint_vec<T>(
-    cap: &SupplyCap<T>,
-    state: &mut SupplyState<T>,
+public fun mint_vec(
+    cap: &SupplyCap,
+    state: &mut SupplyState,
     value: u64,
     ctx: &mut TxContext,
-): vector<Share<T>> {
+): vector<Share> {
     assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
     vector::tabulate!(state.supplies.length(), |i| state.mint_internal(i, value, ctx))
 }
@@ -173,7 +173,7 @@ public fun mint_vec<T>(
 /// * `EMarketOutcomeMismatch` - If share belongs to different market
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
 /// * `EOutcomeSupplyUnderflow` - If trying to burn more than current supply
-public fun burn<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, share: Share<T>): u64 {
+public fun burn(cap: &SupplyCap, state: &mut SupplyState, share: Share): u64 {
     assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
     state.burn_internal(share)
 }
@@ -188,7 +188,7 @@ public fun burn<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, share: Share<
 /// * `EMarketOutcomeMismatch` - If any share belongs to a different market
 /// * `EInvalidOutcomeIndex` - If a share references an invalid outcome
 /// * `EOutcomeSupplyUnderflow` - If burning would underflow supply
-public fun burn_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, shares: vector<Share<T>>) {
+public fun burn_vec(cap: &SupplyCap, state: &mut SupplyState, shares: vector<Share>) {
     assert!(cap.supply_state_id == state.id.to_inner(), ECapSupplyStateMismatch);
     shares.destroy!(|share| state.burn_internal(share))
 }
@@ -204,7 +204,7 @@ public fun burn_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, shares: v
 ///
 /// # Aborts
 /// * `EInvalidOutcomeIndex` - If outcome_index >= num_outcomes
-public fun total_supply<T>(state: &SupplyState<T>, outcome_index: u64): u64 {
+public fun total_supply(state: &SupplyState, outcome_index: u64): u64 {
     assert!(outcome_index < state.supplies.length(), EInvalidOutcomeIndex);
     state.supplies[outcome_index].value
 }
@@ -216,7 +216,7 @@ public fun total_supply<T>(state: &SupplyState<T>, outcome_index: u64): u64 {
 ///
 /// # Returns
 /// * `vector<u64>` - Supply for each outcome [outcome0_supply, outcome1_supply, ...]
-public fun supply_values<T>(state: &SupplyState<T>): vector<u64> {
+public fun supply_values(state: &SupplyState): vector<u64> {
     state.supplies.map_ref!(|supply| supply.value)
 }
 
@@ -227,7 +227,7 @@ public fun supply_values<T>(state: &SupplyState<T>): vector<u64> {
 ///
 /// # Returns
 /// * `u64` - Number of outcomes (e.g., 2 for YES/NO)
-public fun num_outcomes<T>(state: &SupplyState<T>): u64 {
+public fun num_outcomes(state: &SupplyState): u64 {
     state.supplies.length()
 }
 
@@ -238,7 +238,7 @@ public fun num_outcomes<T>(state: &SupplyState<T>): u64 {
 ///
 /// # Returns
 /// * `ID` - Market ID this supply state was created for
-public fun market_id<T>(state: &SupplyState<T>): ID {
+public fun market_id(state: &SupplyState): ID {
     state.market_id
 }
 
@@ -249,7 +249,7 @@ public fun market_id<T>(state: &SupplyState<T>): ID {
 ///
 /// # Returns
 /// * `ID` - The SupplyState's unique ID
-public fun id<T>(state: &SupplyState<T>): ID {
+public fun id(state: &SupplyState): ID {
     state.id.to_inner()
 }
 
@@ -260,7 +260,7 @@ public fun id<T>(state: &SupplyState<T>): ID {
 ///
 /// # Returns
 /// * `ID` - ID of the SupplyState this cap can control
-public fun supply_state_id<T>(cap: &SupplyCap<T>): ID {
+public fun supply_state_id(cap: &SupplyCap): ID {
     cap.supply_state_id
 }
 
@@ -271,7 +271,7 @@ public fun supply_state_id<T>(cap: &SupplyCap<T>): ID {
 ///
 /// # Returns
 /// * `ID` - The capability's unique ID
-public fun cap_id<T>(cap: &SupplyCap<T>): ID {
+public fun cap_id(cap: &SupplyCap): ID {
     cap.id.to_inner()
 }
 
@@ -283,7 +283,7 @@ public fun cap_id<T>(cap: &SupplyCap<T>): ID {
 ///
 /// # Returns
 /// * `bool` - True if cap can control this state
-public fun is_state_cap<T>(cap: &SupplyCap<T>, state: &SupplyState<T>): bool {
+public fun is_state_cap(cap: &SupplyCap, state: &SupplyState): bool {
     cap.supply_state_id == state.id.to_inner()
 }
 
@@ -291,12 +291,12 @@ public fun is_state_cap<T>(cap: &SupplyCap<T>, state: &SupplyState<T>): bool {
 ///
 /// Assumes the caller already validated cap/state linkage and outcome index.
 /// Performs overflow-checked supply update and creates a new share.
-fun mint_internal<T>(
-    state: &mut SupplyState<T>,
+fun mint_internal(
+    state: &mut SupplyState,
     outcome_index: u64,
     value: u64,
     ctx: &mut TxContext,
-): Share<T> {
+): Share {
     let supply = &mut state.supplies[outcome_index];
     assert!(value <= (u64_max!() - supply.value), EOutcomeSupplyOverflow);
 
@@ -308,7 +308,7 @@ fun mint_internal<T>(
 ///
 /// Assumes the caller already validated cap/state linkage.
 /// Enforces market binding, outcome bounds, and supply underflow checks.
-fun burn_internal<T>(state: &mut SupplyState<T>, share: Share<T>): u64 {
+fun burn_internal(state: &mut SupplyState, share: Share): u64 {
     let (market_id, outcome_index, value) = share.destroy();
 
     assert!(market_id == state.market_id, EMarketOutcomeMismatch);

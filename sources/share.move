@@ -13,7 +13,7 @@ module outcomes::share;
 
 /// Raw balance for an outcome share
 /// Contains the actual balance without the share object wrapper
-public struct Balance<phantom T> has store {
+public struct Balance has store {
     /// Amount of tokens for this outcome
     value: u64,
     /// ID of the market this share belongs to (prevents cross-market use)
@@ -27,10 +27,10 @@ public struct Balance<phantom T> has store {
 /// Shares have `key + store` abilities making them:
 /// - Transferable via sui::transfer::public_transfer
 /// - Storable in other objects
-public struct Share<phantom T> has key, store {
+public struct Share has key, store {
     id: UID,
     /// The actual balance
-    balance: Balance<T>,
+    balance: Balance,
 }
 
 /// Error codes
@@ -45,12 +45,12 @@ const EShareNotZero: u64 = 2;
 /// * `outcome_index` - Which outcome (0, 1, 2, etc.)
 /// * `value` - Amount of tokens
 /// * `ctx` - TxContext for creating new object
-public(package) fun new<T>(
+public(package) fun new(
     market_id: ID,
     outcome_index: u64,
     value: u64,
     ctx: &mut TxContext,
-): Share<T> {
+): Share {
     Share {
         id: object::new(ctx),
         balance: Balance { market_id, outcome_index, value },
@@ -63,7 +63,7 @@ public(package) fun new<T>(
 /// * `market_id` - ID of the market
 /// * `outcome_index` - Which outcome
 /// * `value` - Amount of tokens that was in the share
-public(package) fun destroy<T>(share: Share<T>): (ID, u64, u64) {
+public(package) fun destroy(share: Share): (ID, u64, u64) {
     let Share { id, balance } = share;
     let Balance { market_id, outcome_index, value } = balance;
     id.delete();
@@ -83,7 +83,7 @@ public(package) fun destroy<T>(share: Share<T>): (ID, u64, u64) {
 ///
 /// # Aborts
 /// * `EInsufficientOutcomeValue` - If share doesn't have enough tokens
-public fun split<T>(share: &mut Share<T>, value: u64, ctx: &mut TxContext): Share<T> {
+public fun split(share: &mut Share, value: u64, ctx: &mut TxContext): Share {
     assert!(share.balance.value >= value, EInsufficientOutcomeValue);
 
     share.balance.value = share.balance.value - value;
@@ -109,7 +109,7 @@ public fun split<T>(share: &mut Share<T>, value: u64, ctx: &mut TxContext): Shar
 ///
 /// # Aborts
 /// * `EMarketOutcomeMismatch` - If shares are from different markets or outcomes
-public fun join<T>(share: &mut Share<T>, other: Share<T>) {
+public fun join(share: &mut Share, other: Share) {
     let Share { id, balance } = other;
     let Balance { market_id, outcome_index, value } = balance;
 
@@ -131,7 +131,7 @@ public fun join<T>(share: &mut Share<T>, other: Share<T>) {
 /// 
 ///# Aborts
 /// * `EMarketOutcomeMismatch` - If any shares are from different markets or outcomes
-public fun join_vec<T>(share: Share<T>, others: vector<Share<T>>): Share<T> {
+public fun join_vec(share: Share, others: vector<Share>): Share {
     others.fold!(share, |mut acc, other| {
         acc.join(other);
         acc
@@ -148,7 +148,7 @@ public fun join_vec<T>(share: Share<T>, others: vector<Share<T>>): Share<T> {
 ///
 /// # Aborts
 /// * `EShareNotZero` - If share has non-zero value
-public fun destroy_zero<T>(share: Share<T>) {
+public fun destroy_zero(share: Share) {
     let Share { id, balance } = share;
     let Balance { market_id: _, outcome_index: _, value } = balance;
     assert!(value == 0, EShareNotZero);
@@ -163,7 +163,7 @@ public fun destroy_zero<T>(share: Share<T>) {
 /// * `share` - Share to keep or destroy
 /// * `ctx` - TxContext for transferring if not destroyed
 #[allow(lint(self_transfer))]
-public fun keep_or_destroy_zero<T>(share: Share<T>, ctx: &mut TxContext) {
+public fun keep_or_destroy_zero(share: Share, ctx: &mut TxContext) {
     if (share.value() == 0) {
         share.destroy_zero();
     } else {
@@ -172,29 +172,29 @@ public fun keep_or_destroy_zero<T>(share: Share<T>, ctx: &mut TxContext) {
 }
 
 /// Get the token amount in a share
-public fun value<T>(share: &Share<T>): u64 {
+public fun value(share: &Share): u64 {
     share.balance.value
 }
 
 /// Get which outcome this share represents (0, 1, 2, etc.)
-public fun outcome_index<T>(share: &Share<T>): u64 {
+public fun outcome_index(share: &Share): u64 {
     share.balance.outcome_index
 }
 
 /// Get the market ID this share belongs to
-public fun market_id<T>(share: &Share<T>): ID {
+public fun market_id(share: &Share): ID {
     share.balance.market_id
 }
 
 /// Get the share's unique ID
-public fun id<T>(share: &Share<T>): ID {
+public fun id(share: &Share): ID {
     share.id.to_inner()
 }
 
 /// Check if share has zero value
 ///
 /// Useful before calling destroy_zero to avoid abort
-public fun is_zero<T>(share: &Share<T>): bool {
+public fun is_zero(share: &Share): bool {
     share.balance.value == 0
 }
 
@@ -206,7 +206,7 @@ public fun is_zero<T>(share: &Share<T>): bool {
 ///
 /// # Returns
 /// * `bool` - True if share belongs to this market
-public fun belongs_to_market<T>(share: &Share<T>, market_id: ID): bool {
+public fun belongs_to_market(share: &Share, market_id: ID): bool {
     share.balance.market_id == market_id
 }
 
@@ -219,8 +219,8 @@ public fun belongs_to_market<T>(share: &Share<T>, market_id: ID): bool {
 /// * `share` - Share to convert
 ///
 /// # Returns
-/// * `Balance<T>` - Raw balance
-public fun into_balance<T>(share: Share<T>): Balance<T> {
+/// * `Balance` - Raw balance
+public fun into_balance(share: Share): Balance {
     let Share { id, balance } = share;
     id.delete();
     balance
@@ -235,23 +235,23 @@ public fun into_balance<T>(share: Share<T>): Balance<T> {
 /// * `ctx` - TxContext for creating new object
 ///
 /// # Returns
-/// * `Share<T>` - New share object
-public fun from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Share<T> {
+/// * `Share` - New share object
+public fun from_balance(balance: Balance, ctx: &mut TxContext): Share {
     Share { id: object::new(ctx), balance }
 }
 
 #[test_only]
-public fun create_for_testing<T>(
+public fun create_for_testing(
     market_id: ID,
     outcome_index: u64,
     value: u64,
     ctx: &mut TxContext,
-): Share<T> {
+): Share {
     new(market_id, outcome_index, value, ctx)
 }
 
 #[test_only]
-public fun destroy_for_testing<T>(share: Share<T>): u64 {
+public fun destroy_for_testing(share: Share): u64 {
     let (_, _, value) = destroy(share);
     value
 }
