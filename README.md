@@ -41,41 +41,41 @@ module my_market::prediction {
 ## Core API
 
 ### Supply State
-- `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64): (SupplyState<T>, SupplyCap<T>)`
-- `supply::mint<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, outcome_index: u64, value: u64, ctx: &mut TxContext): Share<T>`
-- `supply::mint_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, value: u64, ctx: &mut TxContext): vector<Share<T>>` (one per outcome index, empty if `num_outcomes == 0`)
-- `supply::burn<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, share: Share<T>): u64`
-- `supply::burn_vec<T>(cap: &SupplyCap<T>, state: &mut SupplyState<T>, shares: vector<Share<T>>)` (burns provided shares; caller enforces shape)
+- `supply::create<T: drop>(witness: T, market: &UID, num_outcomes: u64): (SupplyState, SupplyCap)`
+- `supply::mint(cap: &SupplyCap, state: &mut SupplyState, outcome_index: u64, value: u64, ctx: &mut TxContext): Share`
+- `supply::mint_vec(cap: &SupplyCap, state: &mut SupplyState, value: u64, ctx: &mut TxContext): vector<Share>` (one per outcome index, empty if `num_outcomes == 0`)
+- `supply::burn(cap: &SupplyCap, state: &mut SupplyState, share: Share): u64`
+- `supply::burn_vec(cap: &SupplyCap, state: &mut SupplyState, shares: vector<Share>)` (burns provided shares; caller enforces shape)
 
 ### Share  
-- `share::split<T>(share: &mut Share<T>, amount: u64, ctx: &mut TxContext): Share<T>`
-- `share::join<T>(share: &mut Share<T>, other: Share<T>)`
-- `share::destroy_zero<T>(share: Share<T>)`
-- `share::keep_or_destroy_zero<T>(share: Share<T>)`
-- `share::into_balance<T>(share: Share<T>): Balance<T>`
-- `share::from_balance<T>(balance: Balance<T>, ctx: &mut TxContext): Share<T>`
+- `share::split(share: &mut Share, amount: u64, ctx: &mut TxContext): Share`
+- `share::join(share: &mut Share, other: Share)`
+- `share::destroy_zero(share: Share)`
+- `share::keep_or_destroy_zero(share: Share)`
+- `share::into_balance(share: Share): Balance`
+- `share::from_balance(balance: Balance, ctx: &mut TxContext): Share`
 
 ### Getters
 
 **Share getters:**
-- `share::value<T>(share: &Share<T>): u64`
-- `share::outcome_index<T>(share: &Share<T>): u64`
-- `share::market_id<T>(share: &Share<T>): ID`
-- `share::id<T>(share: &Share<T>): ID`
-- `share::is_zero<T>(share: &Share<T>): bool`
-- `share::belongs_to_market<T>(share: &Share<T>, market_id: ID): bool`
+- `share::value(share: &Share): u64`
+- `share::outcome_index(share: &Share): u64`
+- `share::market_id(share: &Share): ID`
+- `share::id(share: &Share): ID`
+- `share::is_zero(share: &Share): bool`
+- `share::belongs_to_market(share: &Share, market_id: ID): bool`
 
 **Supply State getters:**
-- `supply::total_supply<T>(state: &SupplyState<T>, outcome_index: u64): u64`
-- `supply::supply_values<T>(state: &SupplyState<T>): vector<u64>`
-- `supply::num_outcomes<T>(state: &SupplyState<T>): u64`
-- `supply::market_id<T>(state: &SupplyState<T>): ID`
-- `supply::id<T>(state: &SupplyState<T>): ID`
+- `supply::total_supply(state: &SupplyState, outcome_index: u64): u64`
+- `supply::supply_values(state: &SupplyState): vector<u64>`
+- `supply::num_outcomes(state: &SupplyState): u64`
+- `supply::market_id(state: &SupplyState): ID`
+- `supply::id(state: &SupplyState): ID`
 
 **Supply State Capability getters:**
-- `supply::supply_state_id<T>(cap: &SupplyCap<T>): ID`
-- `supply::cap_id<T>(cap: &SupplyCap<T>): ID`
-- `supply::is_state_cap<T>(cap: &SupplyCap<T>, state: &SupplyState<T>): bool`
+- `supply::supply_state_id(cap: &SupplyCap): ID`
+- `supply::cap_id(cap: &SupplyCap): ID`
+- `supply::is_state_cap(cap: &SupplyCap, state: &SupplyState): bool`
 
 ## Design Decisions
 
